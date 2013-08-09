@@ -155,7 +155,6 @@ $(function() {
                 selectionRect = new google.maps.Rectangle(selectionRectOpts);
                 google.maps.event.addListener(selectionRect, 'mouseup', function () {
                     shouldDraw = false;
-                    //submitQuery();
                 });
             } else {
                 if (startLatLng.lng() < event.latLng.lng()) {
@@ -400,19 +399,20 @@ function cherryQueryAsyncCallback(res) {
 /** Core Query Management and Drilldown
 
 /**
-* Utility Method for parsing a record of this form:
-* { "cell": rectangle("22.5,64.5 24.5,66.5"), "count": 5 }
 * returns a json object with keys: weight, latSW, lngSW, latNE, lngNE
+*
+* { "cell": { rectangle: [{ point: [22.5, 64.5]}, { point: [24.5, 66.5]}]}, "count": { int64: 5 }}
 */
 function getRecord(cell_count_record) {
+    // This is a really hacky way to pull out the digits, but it works for now. 
+    var values = cell_count_record.replace("int64","").match(/[-+]?[0-9]*\.?[0-9]+/g);
     var record_representation = {};
     
-    var rectangle = cell_count_record.split('")')[0].split('("')[1];
-    record_representation["latSW"] = parseFloat(rectangle.split(" ")[0].split(',')[0]);
-    record_representation["lngSW"] = parseFloat(rectangle.split(" ")[0].split(',')[1]);
-    record_representation["latNE"] = parseFloat(rectangle.split(" ")[1].split(',')[0]);
-    record_representation["lngNE"] = parseFloat(rectangle.split(" ")[1].split(',')[1]);
-    record_representation["weight"] = parseInt(cell_count_record.split('count": ')[1].split(" ")[0]);
+    record_representation["latSW"] = parseFloat(values[0]);
+    record_representation["lngSW"] = parseFloat(values[1]);
+    record_representation["latNE"] = parseFloat(values[2]);
+    record_representation["lngNE"] = parseFloat(values[3]);
+    record_representation["weight"] = parseInt(values[4]);
     
     return record_representation;
 }
@@ -424,6 +424,7 @@ function getRecord(cell_count_record) {
 function cherryQuerySyncCallback(res) {
     
     records = res["results"];
+    
     if (typeof res["results"][0] == "object") {
         records = res["results"][0];
     }

@@ -4,7 +4,7 @@ function AsterixDBConnection(configuration) {
     this._properties["mode"] = "synchronous";
 
     // This is a demo setup related fix. Enabled by proxy to Asterix REST API.
-    this._properties["endpoint_root"] = "http://localhost:8080/asterix/";
+    this._properties["endpoint_root"] = "/";
     
     var configuration = arguments || {};
     
@@ -101,8 +101,6 @@ AsterixDBConnection.prototype.update = function(statements, successFn) {
 
 AsterixDBConnection.prototype._api = function(json, onSuccess, endpoint) {
     var success_fn = onSuccess;
-
-    // var endpoint_url = http://www.localhost:19002/
     var endpoint_url = this._properties["endpoint_root"] + endpoint;    
 
     $.ajax({

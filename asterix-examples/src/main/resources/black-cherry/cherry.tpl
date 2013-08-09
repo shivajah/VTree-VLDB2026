@@ -6,9 +6,9 @@
 
     <link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.9.2/themes/base/jquery-ui.css"
         rel="stylesheet" type="text/css"/>
-    <link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
+    <link href="static/css/bootstrap.min.css" rel="stylesheet" media="screen">
 
-    <link rel="shortcut icon" type="image/png" href="img/hyrax.png">
+    <link rel="shortcut icon" type="image/png" href="static/img/hyrax.png">
 
     <script src="http://maps.googleapis.com/maps/api/js?sensor=false&libraries=places"
         type="text/javascript"></script> 
@@ -16,11 +16,11 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.9.2/jquery-ui.min.js"
         type="text/javascript"></script>
   
-    <script src="js/bootstrap.min.js"></script>
-    <script type="text/javascript" src="js/geostats.js" ></script>
+    <script src="static/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="static/js/geostats.js" ></script>
 
-    <script src="js/asterix-sdk-stable.js"></script>
-    <script src="js/cherry.js" type="text/javascript"></script>
+    <script src="static/js/asterix-sdk-stable.js"></script>
+    <script src="static/js/cherry.js" type="text/javascript"></script>
     <style type="text/css">
         .column-section {
             border-top: 2px solid #aaa;
@@ -63,7 +63,7 @@
     <!-- Nav -->
     <div class="navbar">
       <div class="navbar-inner">
-        <a class="brand" href="#" style="padding: 0.25em;"><img src="img/finalasterixlogo.png" height="30" width="72"></a>
+        <a class="brand" href="#" style="padding: 0.25em;"><img src="static/img/finalasterixlogo.png" height="30" width="72"></a>
         <ul class="nav">
           <li id="explore-active" class="active"><a id="explore-mode" href="#">Explore</a></li>
           <li id="review-active" ><a id="review-mode" href="#">Review</a></li>
