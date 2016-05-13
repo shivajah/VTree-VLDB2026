@@ -16,18 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.hyracks.dataflow.common.util;
+package org.apache.hyracks.storage.common.buffercache;
 
-public class ReflectionUtils {
-    public static <T> T createInstance(Class<? extends T> klass) {
-        T instance = null;
-        try {
-            instance = klass.newInstance();
-        } catch (InstantiationException e) {
-            throw new RuntimeException(e);
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
-        return instance;
-    }
+public interface ILargePageHelper {
+
+    int getSupplementalBlockNumPages(CachedPage cPage);
+    int getSupplementalBlockPageId(CachedPage cPage);
 }

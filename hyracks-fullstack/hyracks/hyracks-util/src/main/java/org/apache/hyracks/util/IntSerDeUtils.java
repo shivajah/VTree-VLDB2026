@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.hyracks.dataflow.common.util;
+package org.apache.hyracks.util;
 
 public class IntSerDeUtils {
 
