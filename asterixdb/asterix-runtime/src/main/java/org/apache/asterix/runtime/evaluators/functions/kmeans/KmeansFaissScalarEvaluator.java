@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.asterix.runtime.evaluators.functions.vector;
+package org.apache.asterix.runtime.evaluators.functions.kmeans;
 
 import static org.apache.asterix.om.types.EnumDeserializer.ATYPETAGDESERIALIZER;
 
@@ -27,7 +27,6 @@ import java.util.Map;
 
 import org.apache.asterix.common.exceptions.ErrorCode;
 import org.apache.asterix.common.exceptions.RuntimeDataException;
-import org.apache.asterix.dataflow.data.nontagged.serde.ADoubleSerializerDeserializer;
 import org.apache.asterix.dataflow.data.nontagged.serde.AFloatSerializerDeserializer;
 import org.apache.asterix.dataflow.data.nontagged.serde.AInt16SerializerDeserializer;
 import org.apache.asterix.dataflow.data.nontagged.serde.AInt32SerializerDeserializer;
@@ -57,7 +56,7 @@ import org.apache.hyracks.data.std.util.ArrayBackedValueStorage;
 import org.apache.hyracks.dataflow.common.data.accessors.IFrameTupleReference;
 import org.apache.hyracks.util.string.UTF8StringUtil;
 
-public class VectorDistanceArrScalarEvaluator implements IScalarEvaluator {
+public class KmeansFaissScalarEvaluator implements IScalarEvaluator {
     private final ListAccessor[] listAccessor = new ListAccessor[2];
     protected ArrayBackedValueStorage resultStorage = new ArrayBackedValueStorage();
     protected DataOutput dataOutput = resultStorage.getDataOutput();
@@ -80,6 +79,8 @@ public class VectorDistanceArrScalarEvaluator implements IScalarEvaluator {
     private static final UTF8StringPointable COSINE_FORMAT =
             UTF8StringPointable.generateUTF8Pointable("cosine similarity");
     private static final UTF8StringPointable DOT_PRODUCT_FORMAT = UTF8StringPointable.generateUTF8Pointable("dot");
+    private static final UTF8StringPointable FAISS_L2_FORMAT =
+            UTF8StringPointable.generateUTF8Pointable("faiss_l2_squared");
 
     public final ISerializerDeserializer<ADouble> doubleSerde =
             SerializerDeserializerProvider.INSTANCE.getSerializerDeserializer(BuiltinType.ADOUBLE);
@@ -88,23 +89,18 @@ public class VectorDistanceArrScalarEvaluator implements IScalarEvaluator {
 
     @FunctionalInterface
     public interface DistanceFunction {
-        double apply(double[] a, double[] b) throws HyracksDataException;
+        double apply(float[] a, float[] b) throws HyracksDataException;
     }
 
-    private static final Map<Integer, DistanceFunction> DISTANCE_MAP = Map.of(MANHATTAN_FORMAT.hash(),
-            VectorDistanceArrCalculation::manhattan, EUCLIDEAN_DISTANCE.hash(), VectorDistanceArrCalculation::euclidean,
-            EUCLIDEAN_DISTANCE_L2.hash(), VectorDistanceArrCalculation::euclidean, EUCLIDEAN_DISTANCE_SQUARED.hash(),
-            VectorDistanceArrCalculation::euclidean_squared, EUCLIDEAN_DISTANCE_L2_SQUARED.hash(),
-            VectorDistanceArrCalculation::euclidean_squared, COSINE_FORMAT.hash(), VectorDistanceArrCalculation::cosine,
-            DOT_PRODUCT_FORMAT.hash(), VectorDistanceArrCalculation::dot);
+    private static final Map<Integer, DistanceFunction> DISTANCE_MAP =
+            Map.of(FAISS_L2_FORMAT.hash(), VectorDistanceArrCalculation::faissL2);
 
     public final ListAccessor[] listAccessorConstant = new ListAccessor[2];
-    public double[][] primitiveArrayConstant = new double[2][];
+    public float[][] primitiveArrayConstant = new float[2][];
     public final boolean[] isConstant = new boolean[3];
 
-    public VectorDistanceArrScalarEvaluator(IEvaluatorContext context,
-            final IScalarEvaluatorFactory[] evaluatorFactories, FunctionIdentifier funcId, SourceLocation sourceLoc)
-            throws HyracksDataException {
+    public KmeansFaissScalarEvaluator(IEvaluatorContext context, final IScalarEvaluatorFactory[] evaluatorFactories,
+            FunctionIdentifier funcId, SourceLocation sourceLoc) throws HyracksDataException {
         pointables = new IPointable[evaluatorFactories.length];
         evaluators = new IScalarEvaluator[evaluatorFactories.length];
         for (int i = 0; i < evaluators.length; ++i) {
@@ -141,6 +137,7 @@ public class VectorDistanceArrScalarEvaluator implements IScalarEvaluator {
                 }
             }
         }
+
         this.funcId = funcId;
         this.sourceLoc = sourceLoc;
     }
@@ -168,8 +165,8 @@ public class VectorDistanceArrScalarEvaluator implements IScalarEvaluator {
         ListAccessor listAccessor2 = isConstant[1] ? listAccessorConstant[1] : listAccessor[1];
         double distanceCal;
         try {
-            double[] primitiveArray1 = isConstant[0] ? primitiveArrayConstant[0] : createPrimitveList(listAccessor1);
-            double[] primitiveArray2 = isConstant[1] ? primitiveArrayConstant[1] : createPrimitveList(listAccessor2);
+            float[] primitiveArray1 = isConstant[0] ? primitiveArrayConstant[0] : createPrimitveList(listAccessor1);
+            float[] primitiveArray2 = isConstant[1] ? primitiveArrayConstant[1] : createPrimitveList(listAccessor2);
             if (listAccessor1.size() != listAccessor2.size() || listAccessor1.size() == 0
                     || listAccessor2.size() == 0) {
                 PointableHelper.setNull(result);
@@ -201,9 +198,9 @@ public class VectorDistanceArrScalarEvaluator implements IScalarEvaluator {
 
     }
 
-    protected double[] createPrimitveList(ListAccessor listAccessor) throws IOException {
+    protected float[] createPrimitveList(ListAccessor listAccessor) throws IOException {
         ATypeTag typeTag = listAccessor.getItemType();
-        double[] primitiveArray = new double[listAccessor.size()];
+        float[] primitiveArray = new float[listAccessor.size()];
         IPointable tempVal = new VoidPointable();
         ArrayBackedValueStorage storage = new ArrayBackedValueStorage();
         for (int i = 0; i < listAccessor.size(); i++) {
@@ -213,7 +210,7 @@ public class VectorDistanceArrScalarEvaluator implements IScalarEvaluator {
         return primitiveArray;
     }
 
-    protected double extractNumericVector(IPointable pointable, ATypeTag derivedTypeTag) throws HyracksDataException {
+    protected float extractNumericVector(IPointable pointable, ATypeTag derivedTypeTag) throws HyracksDataException {
         byte[] data = pointable.getByteArray();
         int offset = pointable.getStartOffset();
         if (derivedTypeTag.isNumericType()) {
@@ -226,14 +223,13 @@ public class VectorDistanceArrScalarEvaluator implements IScalarEvaluator {
         }
     }
 
-    protected double getValueFromTag(ATypeTag typeTag, byte[] data, int offset) throws HyracksDataException {
+    protected float getValueFromTag(ATypeTag typeTag, byte[] data, int offset) throws HyracksDataException {
         return switch (typeTag) {
             case TINYINT -> AInt8SerializerDeserializer.getByte(data, offset + 1);
             case SMALLINT -> AInt16SerializerDeserializer.getShort(data, offset + 1);
             case INTEGER -> AInt32SerializerDeserializer.getInt(data, offset + 1);
             case BIGINT -> AInt64SerializerDeserializer.getLong(data, offset + 1);
             case FLOAT -> AFloatSerializerDeserializer.getFloat(data, offset + 1);
-            case DOUBLE -> ADoubleSerializerDeserializer.getDouble(data, offset + 1);
             default -> Float.NaN;
         };
     }
