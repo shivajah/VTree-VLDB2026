@@ -2,9 +2,9 @@
 
 
 
-# Vector Database
+# VTree: A LSM-Native Vector Index for Analytical Databases
 
-This repository contains the prototype accompanying our VLDB publication.  
+This repository contains the prototype accompanying our VLDB publication on ``VTree: A LSM-Native Vector Index for Analytical Databases".  
 The implementation is built on top of [Apache AsterixDB](https://asterixdb.apache.org/) and extends it with columnar storage and vector indexing support.
 
 ---
