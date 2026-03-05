@@ -27,3 +27,5 @@ dist
 *.swp
 .m2*
 ß
+asterix-examples/src/main/resources/black-cherry/static/data/
+asterix-examples/src/main/resources/tweetbook-demo/static/data/
