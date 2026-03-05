@@ -29,3 +29,8 @@ dist
 ß
 asterix-examples/src/main/resources/black-cherry/static/data/
 asterix-examples/src/main/resources/tweetbook-demo/static/data/
+
+# Large example datasets (not tracked)
+asterix-app/src/main/resources/sdk/static/example/data/
+asterix-examples/src/main/resources/black-cherry/static/data/
+asterix-examples/src/main/resources/tweetbook-demo/static/data/
