@@ -4,13 +4,8 @@
 
 # Vector Database
 
-This repository contains the research prototype accompanying our VLDB publication.  
+This repository contains the prototype accompanying our VLDB publication.  
 The implementation is built on top of [Apache AsterixDB](https://asterixdb.apache.org/) and extends it with columnar storage and vector indexing support.
-
-> ⚠️ **Important**  
-> This is a research prototype and is **not production-ready**.  
-> A reviewed and cleaned version will be made available at:  
-> [https://github.com/apache/asterixdb](https://github.com/apache/asterixdb)
 
 ---
 
