@@ -17,16 +17,22 @@
 # specific language governing permissions and limitations
 # under the License.
 # ------------------------------------------------------------
+# Start only the NC service (node agent) on this host.
+# The Cluster Controller (CC) must be running elsewhere and will
+# connect to this node at address:9090 to push config.
+# ------------------------------------------------------------
 
 function usage() {
   echo
   echo Usage: $(basename $0)
   echo
+  echo "  Starts only the AsterixDB NC service on this node (listens on *:9090)."
+  echo "  Use on NC-only hosts; run start-sample-cluster.sh on the CC host."
+  echo
 }
 
 while [ -n "$1" ]; do
   case $1 in
-    -f|-force);; # ignored, this is always the case
     -help|--help|-usage|--usage) usage; exit 0;;
     *) echo "ERROR: unknown argument '$1'"; usage; exit 1;;
   esac
@@ -109,23 +115,22 @@ echo "LOGSDIR=$LOGSDIR"
 echo
 cd "$CLUSTERDIR"
 mkdir -p "$LOGSDIR"
-"$INSTALLDIR/bin/${HELPER_COMMAND}" get_cluster_state -quiet \
-    && echo "ERROR: sample cluster address (localhost:${LISTEN_PORT}) already in use" && exit 1
 
-if ps -ef | grep 'java.*org\.apache\.hyracks\.control\.[cn]c\.\([CN]CDriver\|service\.NCService\)' > /tmp/$$_pids; then
-  echo "WARNING: ${PRODUCT} processes are already running:"
-  cat /tmp/$$_pids |  sed 's/^ *[0-9]* \([0-9]*\).*org\.apache\.hyracks\.control\.[cn]c[^ ]*\.\([^ ]*\) .*/\1 - \2/'
-  rm /tmp/$$_pids
+if ps -ef | grep 'java.*org\.apache\.hyracks\.control\.nc\.service\.NCService' > /tmp/$$_pids 2>/dev/null; then
+  echo "WARNING: NC service is already running:"
+  cat /tmp/$$_pids | sed 's/^ *[0-9]* \([0-9]*\).*/\1 - NCService/'
+  rm -f /tmp/$$_pids
+  echo "Exiting. Stop it first if you want to restart."
+  exit 1
 fi
+rm -f /tmp/$$_pids
 
-rm /tmp/$$_pids
 (
   echo "--------------------------"
   date
   echo "--------------------------"
-) | tee -a "$LOGSDIR/blue-service.log" | tee -a "$LOGSDIR/red-service.log" >> "$LOGSDIR/cc.log"
-echo "INFO: Starting sample cluster..."
-"$INSTALLDIR/bin/${NC_SERVICE_COMMAND}" -logdir - >> "$LOGSDIR/red-service.log" 2>&1 &
-"$INSTALLDIR/bin/${CC_COMMAND}" -config-file "$CLUSTERDIR/conf/cc.conf" >> "$LOGSDIR/cc.log" 2>&1 &
-"$INSTALLDIR/bin/${HELPER_COMMAND}" wait_for_cluster -timeout 90
-exit $?
+) >> "$LOGSDIR/red-service.log"
+echo "INFO: Starting NC service (node agent) on this host..."
+"$INSTALLDIR/bin/asterixncservice" -logdir - >> "$LOGSDIR/red-service.log" 2>&1 &
+echo "NC service started in background. Log: $LOGSDIR/red-service.log"
+echo "Waiting for CC to connect on port 9090."
