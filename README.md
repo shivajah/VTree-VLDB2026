@@ -89,6 +89,83 @@ Here are steps to get AsterixDB running on your local machine:
   ```
 - Read more [documentation](https://ci.apache.org/projects/asterixdb/index.html) to learn the data model, query language, and how to create a cluster instance.
 
+---
+
+## Experiment Configuration
+
+This section describes how to deploy an AsterixDB cluster on AWS for running experiments.
+
+### 1. Provision EC2 Instances
+
+Launch **m8id.xlarge** instances in your preferred AWS region. Ensure sufficient instances for your cluster topology (one Cluster Controller node and one or more Node Controller nodes).
+
+### 2. Deploy the AsterixDB Binary
+
+Build the project locally, then copy the binary assembly to each EC2 instance:
+
+```bash
+# Build locally first
+cd asterixdb && mvn clean package -DskipTests
+
+# Copy the binary to each instance (replace <instance-ip> with the instance's public or private IP)
+scp -r asterixdb/asterix-server/target/asterix-server-*-binary-assembly/apache-asterixdb-*-SNAPSHOT ec2-user@<instance-ip>:~/
+```
+
+Repeat the copy step for every instance that will participate in the cluster.
+
+### 3. Configure IAM and Security
+
+- **IAM**: Attach an IAM role to each EC2 instance with permissions for S3 access (read/write to your bucket) and any other required AWS services.
+- **Security groups**: Configure security groups so that instances can communicate with each other over the required ports (e.g., 19004 for NC API, 9090 for NC service, and any ports used by the Cluster Controller). Ensure inbound rules allow traffic from the other cluster members.
+
+### 4. Create an S3 Bucket
+
+Create an S3 bucket in the **same AWS region** as your EC2 instances. Configure the bucket and IAM so that:
+
+- EC2 instances have read/write access to the bucket via their IAM role.
+- Security and network settings allow the instances to reach the bucket (e.g., VPC endpoints or public access as appropriate for your setup).
+
+### 5. Prepare Each Instance
+
+On **every** instance (CC and NC nodes), run the prepare script to set up storage and dependencies:
+
+```bash
+cd ~/apache-asterixdb-*-SNAPSHOT/opt/local/bin
+./prepare-instance.sh [device]
+```
+
+The script formats and mounts an EBS volume at `/mnt/instance` and installs Java 21. If you have multiple data devices, pass the device path (e.g., `/dev/nvme1n1`) as an argument.
+
+### 6. Configure cc.conf
+
+On the Cluster Controller (CC) node, edit `opt/local/conf/cc.conf`:
+
+- **`[nc/1]`, `[nc/2]`, etc.**: Set `address` to the IP of each Node Controller instance.
+- **`[cc]`**: Set `address` to the IP of the CC node (typically the node you will query).
+- **`[common]`**: Set `cloud.storage.bucket` to your S3 bucket name and `cloud.storage.region` to the AWS region where the bucket resides.
+
+Ensure this configuration is consistent across all nodes if they use a shared config.
+
+### 7. Start the Cluster
+
+- **On the CC node** (the main cluster controller):
+
+  ```bash
+  cd ~/apache-asterixdb-*-SNAPSHOT/opt/local/bin
+  ./start-sample-cluster.sh
+  ```
+
+- **On each NC node** (all other nodes):
+
+  ```bash
+  cd ~/apache-asterixdb-*-SNAPSHOT/opt/local/bin
+  ./start-sample-node.sh
+  ```
+
+Start the CC node first, then start the NC nodes. The NC nodes will listen for the CC to connect and push configuration.
+
+---
+
 ## Dataset Creation
 
 Use `dataset-creation/amplify_dataset.py` to generate an amplified JSONL dataset with embeddings.
