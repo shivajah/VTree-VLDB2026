@@ -64,9 +64,9 @@ To build AsterixDB from source, you should have a platform with the following:
 
 Instructions for building the master:
 
-- Checkout AsterixDB master:
+- Checkout AsterixDB VLDB 2026 Vector Tree:
   ```
-    $git clone https://github.com/apache/asterixdb.git
+    $git clone https://github.com/shivajah/VTree-VLDB2026.git
   ```
 - Build AsterixDB master:
   ```
@@ -98,6 +98,7 @@ This section describes how to deploy an AsterixDB cluster on AWS for running exp
 ### 1. Provision EC2 Instances
 
 Launch **m8id.xlarge** instances in your preferred AWS region. Ensure sufficient instances for your cluster topology (one Cluster Controller node and one or more Node Controller nodes).
+For our experiments we initiated 4 EC2 instances (**m8id.xlarge**), choosing the first instance to be our CC. 
 
 ### 2. Deploy the AsterixDB Binary
 
@@ -110,13 +111,16 @@ cd asterixdb && mvn clean package -DskipTests
 # Copy the binary to each instance (replace <instance-ip> with the instance's public or private IP)
 scp -r asterixdb/asterix-server/target/asterix-server-*-binary-assembly/apache-asterixdb-*-SNAPSHOT ec2-user@<instance-ip>:~/
 ```
+Ensure the user is correct based on your AWS account. 
 
 Repeat the copy step for every instance that will participate in the cluster.
 
 ### 3. Configure IAM and Security
 
-- **IAM**: Attach an IAM role to each EC2 instance with permissions for S3 access (read/write to your bucket) and any other required AWS services.
-- **Security groups**: Configure security groups so that instances can communicate with each other over the required ports (e.g., 19004 for NC API, 9090 for NC service, and any ports used by the Cluster Controller). Ensure inbound rules allow traffic from the other cluster members.
+- **IAM**: Attach an IAM role to each EC2 instance with permissions for S3 access (read/write to your bucket) and any other required AWS services (EC2 and S3).
+- **Security groups**: Configure security groups so that instances can communicate with each other over (Allow all TCP communication for the subnet of each EC2 Instance) for the inbound rules. 
+- **Querying the cluster** Use any EC2 instance to query the CC instance at port 19002.  
+
 
 ### 4. Create an S3 Bucket
 
