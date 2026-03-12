@@ -208,6 +208,105 @@ python3 dataset-creation/amplify_dataset.py /path/to/input.csv -o amplified_outp
 python3 dataset-creation/amplify_dataset.py /path/to/input.csv -o out --s3-bucket my-bucket --s3-prefix amplified/
 ```
 
+### 4. Load Data from S3
+
+After generating an amplified dataset and uploading it to S3, load it into AsterixDB using the `COPY` statement. Example for the `sagemaker-generator` bucket in `us-west-2`:
+
+```sql
+COPY {DATASET_NAME}
+FROM S3
+PATH ("corrected-10m")
+WITH {
+    "format": "json",
+    "container": "sagemaker-generator",
+    "region": "us-west-2",
+    "accessKeyId": "<YOUR_AWS_ACCESS_KEY_ID>",
+    "secretAccessKey": "<YOUR_AWS_SECRET_ACCESS_KEY>"
+};
+```
+
+Replace `{DATASET_NAME}` with your dataset name, and the placeholder credentials with your AWS access key ID and secret access key (or omit these if using IAM role–based auth).
+
+### 5. Create Vector Index
+
+Create a vector index on the embedding field with the desired parameters:
+
+```sql
+CREATE VECTOR INDEX {INDEX_NAME} ON {DATASET_NAME}({VECTOR_FIELD} VECTOR)
+INCLUDE ({DATASET_COLUMN_NAMES_COMMA_SEP})
+WITH {
+    "dimension": {VECTOR_DIMENSION},
+    "train_list_number": {TRAIN_LIST_NUMBER},
+    "num_clusters": {NUM_CLUSTERS},
+    "similarity": "{SIMILARITY}"
+};
+```
+
+Example configuration for a 384-dimensional embedding dataset:
+
+| Dimension | Num_clusters | SQ | K | train_list | #queries | similarity |
+|-----------|--------------|-----|---|------------|----------|------------|
+| 384       | 653          | 8   | 50| 1.3Mil     | 30       | cosine similarity |
+
+```sql
+-- WITHOUT QUANTIZATION
+CREATE VECTOR INDEX ix_embedding ON MyDataset(embedding VECTOR)
+INCLUDE (id, text, metadata)
+WITH {
+    "dimension": 384,
+    "train_list_number": 1300000,
+    "num_clusters": 653,
+    "similarity": "cosine similarity"
+};
+
+-- WITH QUANTIZATION
+CREATE VECTOR INDEX ix_embedding ON MyDataset(embedding VECTOR)
+INCLUDE (id, text, metadata)
+WITH {
+    "dimension": 384,
+    "train_list_number": 1300000,
+    "num_clusters": 653,
+    "similarity": "cosine similarity"
+    "quantization" : "SQ8"
+};
+```
+
+### 6. Query Examples
+
+**KNN (exact) query:**
+
+```sql
+SELECT data.{field_name}
+FROM {DATASET_NAME} data
+LET dist = vector_distance(data.{embedding_field_name}, {query_vector}, {distance_function})
+ORDER BY dist
+LIMIT 50;
+```
+
+**ANN (approximate) query:**
+
+```sql
+SELECT data.{field_name}
+FROM {DATASET_NAME} data
+LET dist = ann_distance(data.{embedding_field_name}, {query_vector}, {distance_function}, {min_probe}, {epsilon})
+ORDER BY dist
+LIMIT 50;
+```
+
+**ANN query with pruning enabled:**
+
+```sql
+SET `compiler.vector.prunedsearch` "true";
+
+SELECT data.{field_name}
+FROM {DATASET_NAME} data
+LET dist = ann_distance(data.{embedding_field_name}, {query_vector}, {distance_function}, {min_probe}, {epsilon})
+ORDER BY dist
+LIMIT 50;
+```
+
+---
+
 ## GIST‑960 Example (Using the `open-vdb/gist-960-euclidean` Dataset)
 
 This example demonstrates how to load the **GIST‑960** dataset from Hugging Face and build a vector index in AsterixDB using the columnar storage format.
